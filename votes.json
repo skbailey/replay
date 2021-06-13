@@ -1,0 +1,10 @@
+{
+  "City": {
+    "DataType": "String",
+    "StringValue": "Any City"
+  },
+  "Population": {
+    "DataType": "Number",
+    "StringValue": "1250800"
+  }
+}

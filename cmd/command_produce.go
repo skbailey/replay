@@ -16,7 +16,7 @@ func commandProduce() *cli.Command {
 		Name:    "produce",
 		Aliases: []string{"p"},
 		Usage:   "Produce a message to a queue",
-		Flags:   consumeFlags,
+		Flags:   produceFlags,
 		Action: func(c *cli.Context) error {
 			produce(c)
 			return nil
@@ -33,9 +33,19 @@ type Message struct {
 func produce(c *cli.Context) error {
 	fmt.Println("Produce message...")
 	queueName := c.String("queue-name")
+	candidatePosition := c.String("candidate-position")
+	candidateID := c.String("candidate-id")
 
 	if queueName == "" {
 		log.Fatalln("You must supply the name of a queue")
+	}
+
+	if candidatePosition == "" {
+		log.Fatalln("You must provide the candidate position")
+	}
+
+	if candidateID == "" {
+		log.Fatalln("You must provide the candidate id")
 	}
 
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
@@ -52,8 +62,8 @@ func produce(c *cli.Context) error {
 	}
 
 	message := Message{
-		ID:       "maya-wiley",
-		Position: "mayor",
+		ID:       candidateID,
+		Position: candidatePosition,
 	}
 
 	messageBytes, err := json.Marshal(message)

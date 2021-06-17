@@ -4,7 +4,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var globalFlags = []cli.Flag{
+var consumeFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "queue-name",
 		Usage:   "Defines the name of the queue",

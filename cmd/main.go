@@ -14,6 +14,7 @@ func Run() {
 		Usage: "Replays failed messages in a queue",
 		Commands: []*cli.Command{
 			commandConsume(),
+			commandProduce(),
 		},
 	}
 

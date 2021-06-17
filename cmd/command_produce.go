@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -10,21 +11,27 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func commandConsume() *cli.Command {
+func commandProduce() *cli.Command {
 	return &cli.Command{
-		Name:    "consume",
-		Aliases: []string{"c"},
-		Usage:   "Consume a message from a queue",
+		Name:    "produce",
+		Aliases: []string{"p"},
+		Usage:   "Produce a message to a queue",
 		Flags:   consumeFlags,
 		Action: func(c *cli.Context) error {
-			consume(c)
+			produce(c)
 			return nil
 		},
 	}
 }
 
-func consume(c *cli.Context) error {
-	fmt.Println("Consume message...")
+// Message represents a vote to be added to the queue
+type Message struct {
+	ID       string `json:"id"`
+	Position string `json:"position"`
+}
+
+func produce(c *cli.Context) error {
+	fmt.Println("Produce message...")
 	queueName := c.String("queue-name")
 
 	if queueName == "" {
@@ -44,22 +51,21 @@ func consume(c *cli.Context) error {
 		log.Fatalln("could not fetch queue url", err)
 	}
 
-	queueURL := urlResult.QueueUrl
-	msgResult, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
-		AttributeNames: []*string{
-			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
-		},
-		MessageAttributeNames: []*string{
-			aws.String(sqs.QueueAttributeNameAll),
-		},
-		QueueUrl:            queueURL,
-		MaxNumberOfMessages: aws.Int64(5),
-	})
-
-	for _, message := range msgResult.Messages {
-		fmt.Println("Message Handle: " + *message.ReceiptHandle)
-		fmt.Println("Message Body: " + *message.Body)
+	message := Message{
+		ID:       "maya-wiley",
+		Position: "mayor",
 	}
+
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	queueURL := urlResult.QueueUrl
+	_, err = svc.SendMessage(&sqs.SendMessageInput{
+		MessageBody: aws.String(string(messageBytes)),
+		QueueUrl:    queueURL,
+	})
 
 	return err
 }

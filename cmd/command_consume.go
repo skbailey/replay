@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -59,6 +60,28 @@ func consume(c *cli.Context) error {
 	for _, message := range msgResult.Messages {
 		fmt.Println("Message Handle: " + *message.ReceiptHandle)
 		fmt.Println("Message Body: " + *message.Body)
+
+		var vote Vote
+		err = json.Unmarshal([]byte(*message.Body), &vote)
+		if err != nil {
+			log.Println("error unmarshalling json", err)
+			return err
+		}
+
+		log.Printf("Vote is %+v\n", vote)
+
+		if vote.ID == "andrew-yang" {
+			log.Println("Deleting vote for ", vote.ID)
+			_, err = svc.DeleteMessage(&sqs.DeleteMessageInput{
+				QueueUrl:      queueURL,
+				ReceiptHandle: message.ReceiptHandle,
+			})
+
+			if err != nil {
+				log.Println("error deleting message from queue", err)
+				return err
+			}
+		}
 	}
 
 	return err

@@ -24,8 +24,8 @@ func commandProduce() *cli.Command {
 	}
 }
 
-// Message represents a vote to be added to the queue
-type Message struct {
+// Vote represents a vote to be added to the queue
+type Vote struct {
 	ID       string `json:"id"`
 	Position string `json:"position"`
 }
@@ -61,7 +61,7 @@ func produce(c *cli.Context) error {
 		log.Fatalln("could not fetch queue url", err)
 	}
 
-	message := Message{
+	message := Vote{
 		ID:       candidateID,
 		Position: candidatePosition,
 	}

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -59,6 +60,14 @@ func consume(c *cli.Context) error {
 					}
 
 					log.Printf("Vote is %+v\n", vote)
+					if vote.ID == "" || vote.Position == "" {
+						return errors.New("invalid vote: missing required data")
+					}
+
+					if vote.ID == "scott-stringer" {
+						return errors.New("do not count votes for this candidate")
+					}
+
 					return nil
 				})
 

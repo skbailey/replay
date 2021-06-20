@@ -13,6 +13,7 @@ import (
 
 var sqsService *sqs.SQS
 var sqsURL *string
+var sqsRetryURL *string
 
 const waitTimeInSeconds = 5
 const visibilityTimeoutInSeconds = 10
@@ -30,16 +31,27 @@ func Initialize(c *cli.Context) error {
 	}))
 
 	sqsService = sqs.New(sess)
-	urlResult, err := sqsService.GetQueueUrl(&sqs.GetQueueUrlInput{
-		QueueName: &queueName,
-	})
 
+	var err error
+	sqsURL, err = getQueueURL(queueName)
 	if err != nil {
 		return err
 	}
 
-	sqsURL = urlResult.QueueUrl
-	return nil
+	sqsRetryURL, err = getQueueURL(fmt.Sprintf("%s-Retry", queueName))
+	return err
+}
+
+func getQueueURL(name string) (*string, error) {
+	urlResult, err := sqsService.GetQueueUrl(&sqs.GetQueueUrlInput{
+		QueueName: &name,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return urlResult.QueueUrl, nil
 }
 
 // FetchMessages polls the queue for messages
@@ -73,7 +85,7 @@ func FetchMessages(callback func(*sqs.Message) error) error {
 		err = callback(message)
 		if err != nil {
 			log.Println("failed to process message", err)
-			// TODO: Send message to retry queue
+			queueForRetry(message)
 			continue
 		}
 
@@ -82,6 +94,21 @@ func FetchMessages(callback func(*sqs.Message) error) error {
 			log.Println("failed to delete message")
 		}
 	}
+
+	return err
+}
+
+func queueForRetry(message *sqs.Message) error {
+	_, err := sqsService.SendMessage(&sqs.SendMessageInput{
+		MessageAttributes: map[string]*sqs.MessageAttributeValue{
+			"RetryCount": &sqs.MessageAttributeValue{
+				DataType:    aws.String("Number"),
+				StringValue: aws.String("0"),
+			},
+		},
+		MessageBody: aws.String(string(*message.Body)),
+		QueueUrl:    sqsRetryURL,
+	})
 
 	return err
 }

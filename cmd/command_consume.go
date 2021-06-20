@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -45,44 +49,79 @@ func consume(c *cli.Context) error {
 		log.Fatalln("could not fetch queue url", err)
 	}
 
+	// Poll queue
+	quitChannel := make(chan os.Signal)
+	signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
+	shutdownChannel := make(chan bool)
+
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(1)
+
 	queueURL := urlResult.QueueUrl
-	msgResult, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
-		AttributeNames: []*string{
-			aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
-		},
-		MessageAttributeNames: []*string{
-			aws.String(sqs.QueueAttributeNameAll),
-		},
-		QueueUrl:            queueURL,
-		MaxNumberOfMessages: aws.Int64(5),
-	})
+	go func(wg *sync.WaitGroup, shutdownChan <-chan bool) {
+		defer wg.Done()
+		for {
+			select {
+			case _ = <-shutdownChan:
+				log.Println("Shutdown signal received, retrieval of queue messages will stop soon.")
+				return
+			default:
+				msgResult, err := svc.ReceiveMessage(&sqs.ReceiveMessageInput{
+					AttributeNames: []*string{
+						aws.String(sqs.MessageSystemAttributeNameSentTimestamp),
+					},
+					MessageAttributeNames: []*string{
+						aws.String(sqs.QueueAttributeNameAll),
+					},
+					QueueUrl:            queueURL,
+					MaxNumberOfMessages: aws.Int64(5),
+					WaitTimeSeconds:     aws.Int64(waitTimeInSeconds),
+					VisibilityTimeout:   aws.Int64(visibilityTimeoutInSeconds),
+				})
 
-	for _, message := range msgResult.Messages {
-		fmt.Println("Message Handle: " + *message.ReceiptHandle)
-		fmt.Println("Message Body: " + *message.Body)
+				if err != nil {
+					log.Println("error receiving messages")
+				}
 
-		var vote Vote
-		err = json.Unmarshal([]byte(*message.Body), &vote)
-		if err != nil {
-			log.Println("error unmarshalling json", err)
-			return err
-		}
+				for _, message := range msgResult.Messages {
+					fmt.Println("Message Handle: " + *message.ReceiptHandle)
+					fmt.Println("Message Body: " + *message.Body)
 
-		log.Printf("Vote is %+v\n", vote)
+					for key, attr := range message.MessageAttributes {
+						fmt.Printf("Key: %s, Value: %s\n", key, *attr.StringValue)
+					}
 
-		if vote.ID == "andrew-yang" {
-			log.Println("Deleting vote for ", vote.ID)
-			_, err = svc.DeleteMessage(&sqs.DeleteMessageInput{
-				QueueUrl:      queueURL,
-				ReceiptHandle: message.ReceiptHandle,
-			})
+					var vote Vote
+					err = json.Unmarshal([]byte(*message.Body), &vote)
+					if err != nil {
+						log.Println("error unmarshalling json", err)
+						return
+					}
 
-			if err != nil {
-				log.Println("error deleting message from queue", err)
-				return err
+					log.Printf("Vote is %+v\n", vote)
+
+					if vote.ID == "andrew-yang" {
+						log.Println("Deleting vote for ", vote.ID)
+						_, err = svc.DeleteMessage(&sqs.DeleteMessageInput{
+							QueueUrl:      queueURL,
+							ReceiptHandle: message.ReceiptHandle,
+						})
+
+						if err != nil {
+							log.Println("error deleting message from queue", err)
+							return
+						}
+					}
+				}
 			}
 		}
-	}
 
-	return err
+	}(&waitGroup, shutdownChannel)
+
+	<-quitChannel
+	close(shutdownChannel)
+
+	waitGroup.Wait()
+
+	return nil
 }

@@ -15,6 +15,7 @@ func Run() {
 		Commands: []*cli.Command{
 			commandConsume(),
 			commandProduce(),
+			commandRetry(),
 		},
 	}
 

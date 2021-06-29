@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -85,8 +86,12 @@ func FetchMessages(callback func(*sqs.Message) error) error {
 		err = callback(message)
 		if err != nil {
 			log.Println("failed to process message", err)
-			queueForRetry(message)
-			continue
+
+			retryErr := queueForRetry(message)
+			if retryErr != nil {
+				log.Println("failed to queue message for retry", retryErr)
+				continue
+			}
 		}
 
 		err = deleteMessage(message)
@@ -99,11 +104,20 @@ func FetchMessages(callback func(*sqs.Message) error) error {
 }
 
 func queueForRetry(message *sqs.Message) error {
+	log.Println("queuing failed message for retry", message.MessageId)
+	var count int
+	for key, attr := range message.MessageAttributes {
+		if key == "RetryCount" {
+			value := *attr.StringValue
+			count, _ = strconv.Atoi(value) // if value isn't a valid integer, it's fine to default to 0
+		}
+	}
+
 	_, err := sqsService.SendMessage(&sqs.SendMessageInput{
 		MessageAttributes: map[string]*sqs.MessageAttributeValue{
 			"RetryCount": &sqs.MessageAttributeValue{
 				DataType:    aws.String("Number"),
-				StringValue: aws.String("0"),
+				StringValue: aws.String(fmt.Sprintf("%d", count)),
 			},
 		},
 		MessageBody: aws.String(string(*message.Body)),

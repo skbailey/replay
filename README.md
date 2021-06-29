@@ -13,3 +13,10 @@ You may consume messages from the selected queue
 ```
 go run main.go consume --queue-name Votes
 ```
+
+### Retry messages
+
+You may pull queue messages to be retried (from a retry queue)
+```
+go run main.go retry --queue-name Votes --retry-queue-name Votes-Retry
+```

@@ -29,3 +29,16 @@ var produceFlags = []cli.Flag{
 		EnvVars: []string{"CANDIDATE_ID"},
 	},
 }
+
+var retryFlags = []cli.Flag{
+	&cli.StringFlag{
+		Name:    "queue-name",
+		Usage:   "Defines the name of the queue",
+		EnvVars: []string{"SQS_QUEUE_NAME"},
+	},
+	&cli.StringFlag{
+		Name:    "retry-queue-name",
+		Usage:   "Defines the name of the retry queue",
+		EnvVars: []string{"SQS_RETRY_QUEUE_NAME"},
+	},
+}

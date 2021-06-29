@@ -73,6 +73,12 @@ func produce(c *cli.Context) error {
 
 	queueURL := urlResult.QueueUrl
 	_, err = svc.SendMessage(&sqs.SendMessageInput{
+		MessageAttributes: map[string]*sqs.MessageAttributeValue{
+			"RetryCount": &sqs.MessageAttributeValue{
+				DataType:    aws.String("Number"),
+				StringValue: aws.String("0"),
+			},
+		},
 		MessageBody: aws.String(string(messageBytes)),
 		QueueUrl:    queueURL,
 	})

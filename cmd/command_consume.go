@@ -45,6 +45,7 @@ func consume(c *cli.Context) error {
 
 	go func(wg *sync.WaitGroup, shutdownChan <-chan bool) {
 		defer wg.Done()
+
 		for {
 			select {
 			case _ = <-shutdownChan:

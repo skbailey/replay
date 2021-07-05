@@ -105,11 +105,14 @@ func FetchMessages(callback func(*sqs.Message) error) error {
 
 func queueForRetry(message *sqs.Message) error {
 	log.Println("queuing failed message for retry", message.MessageId)
+
 	var count int
 	for key, attr := range message.MessageAttributes {
 		if key == "RetryCount" {
 			value := *attr.StringValue
 			count, _ = strconv.Atoi(value) // if value isn't a valid integer, it's fine to default to 0
+
+			break
 		}
 	}
 

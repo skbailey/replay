@@ -35,6 +35,7 @@ func retry(c *cli.Context) error {
 	fmt.Println("Consume message...")
 	queueName := c.String("queue-name")
 	retryQueueName := c.String("retry-queue-name")
+	retryCount := c.Int("retry-count")
 
 	// Setup
 	if queueName == "" {
@@ -117,7 +118,7 @@ func retry(c *cli.Context) error {
 						}
 					}
 
-					if count < 1 {
+					if count < retryCount {
 						count++
 
 						_, err = svc.SendMessage(&sqs.SendMessageInput{
@@ -131,7 +132,7 @@ func retry(c *cli.Context) error {
 							QueueUrl:    queueURL,
 						})
 					} else {
-						log.Println("this message has failed 2 retries")
+						log.Printf("this message has failed %d retries\n", retryCount)
 					}
 
 					_, err := svc.DeleteMessage(&sqs.DeleteMessageInput{

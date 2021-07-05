@@ -33,12 +33,18 @@ var produceFlags = []cli.Flag{
 var retryFlags = []cli.Flag{
 	&cli.StringFlag{
 		Name:    "queue-name",
-		Usage:   "Defines the name of the queue",
+		Usage:   "The name of the queue",
 		EnvVars: []string{"SQS_QUEUE_NAME"},
 	},
 	&cli.StringFlag{
 		Name:    "retry-queue-name",
-		Usage:   "Defines the name of the retry queue",
+		Usage:   "The name of the retry queue",
 		EnvVars: []string{"SQS_RETRY_QUEUE_NAME"},
+	},
+	&cli.IntFlag{
+		Name:    "retry-count",
+		Usage:   "The number of retry attempts for a failed message",
+		Value:   1,
+		EnvVars: []string{"RETRY_COUNT"},
 	},
 }
